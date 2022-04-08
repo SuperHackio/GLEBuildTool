@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "GLEBuildTool": {
+      "commandName": "Project",
+      "commandLineArgs": "NTSC-U"
+    }
+  }
+}
