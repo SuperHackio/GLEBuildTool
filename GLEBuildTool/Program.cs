@@ -40,11 +40,28 @@ namespace GLEBuildTool
 
             Console.WriteLine("Locating Source Files...");
             string[] files = Directory.GetFiles(SourcePath, "*.s", SearchOption.AllDirectories); //Assembly files
-            if (files.Length == 0)
+            string[] files2 = Directory.GetFiles(SourcePath, "*.lnk", SearchOption.AllDirectories); //Shortcuts to Assembly files
+            List<string> AllFiles = new();
+            AllFiles.AddRange(files);
+            for (int i = 0; i < files2.Length; i++)
+            {
+                string Target = GetShortcutTarget(files2[i]);
+
+                if (File.GetAttributes(Target).HasFlag(FileAttributes.Directory))
+                {
+                    AllFiles.AddRange(Directory.GetFiles(Target, "*.s", SearchOption.AllDirectories));
+                }
+                else
+                    AllFiles.Add(Target);
+            }
+            if (AllFiles.Count == 0)
             {
                 Console.WriteLine("No files found!");
                 return;
             }
+            //files = AllFiles.OrderBy(Path.GetFileName).ToArray();
+            AllFiles.Sort();
+            files = AllFiles.ToArray();
 
             Console.WriteLine($"Loading Symbols for {Region}...");
             Dictionary<string, uint> Symbols = new();
@@ -77,6 +94,7 @@ namespace GLEBuildTool
                     {
                         //An error
                         Console.WriteLine("Invalid Ignore - \".GLE IGNORE\" must be the first line in the file!");
+                        Console.WriteLine("Press enter to exit");
                         Console.ReadLine();
                         return;
                     }
@@ -331,10 +349,14 @@ namespace GLEBuildTool
             File.WriteAllLines(Path.Combine(RiivoOutputPath(Region), $"GalaxyLevelEngine_{GLEVERSION}_{Region}.xml"), MemoryPatches.ToArray());
             File.WriteAllLines(Path.Combine(DolphinOutputPath(Region), $"SB3{RegionShort.ToUpper()}01.ini"), Dolphin.ToArray());
 
+            if (args.Any(A => A.Equals("--nores")))
+                goto NoResJump;
+
             DirectoryCopy(Path.Combine(ResourcesPath, "Riivolution"), Path.Combine(RiivoOutputPath(Region), GLEFull(Region, GLEVERSION)), true);
             DirectoryCopy(Path.Combine(ResourcesPath, "Dolphin_Additions"), Path.Combine(DolphinOutputPath(Region), GLEFull(Region, GLEVERSION)), true);
             DirectoryCopy(Path.Combine(ResourcesPath, "Riivolution"), Path.Combine(DolphinOutputPath(Region), GLEFull(Region, GLEVERSION), "files"), true);
 
+            NoResJump:
             Console.WriteLine("Build Finished! Check the Build folder!");
             Thread.Sleep(2000);
         }
@@ -689,5 +711,58 @@ namespace GLEBuildTool
             "bdnz- ",
             "bdnz+ ",
         };
+
+        private static string GetShortcutTarget(string file)
+        {
+            try
+            {
+                if (Path.GetExtension(file).ToLower() != ".lnk")
+                {
+                    throw new Exception("Supplied file must be a .LNK file");
+                }
+
+                FileStream fileStream = File.Open(file, FileMode.Open, FileAccess.Read);
+                using BinaryReader fileReader = new(fileStream);
+                fileStream.Seek(0x14, SeekOrigin.Begin);     // Seek to flags
+                uint flags = fileReader.ReadUInt32();        // Read flags
+                if ((flags & 1) == 1)
+                {                      // Bit 1 set means we have to
+                                       // skip the shell item ID list
+                    fileStream.Seek(0x4c, SeekOrigin.Begin); // Seek to the end of the header
+                    uint offset = fileReader.ReadUInt16();   // Read the length of the Shell item ID list
+                    fileStream.Seek(offset, SeekOrigin.Current); // Seek past it (to the file locator info)
+                }
+
+                long fileInfoStartsAt = fileStream.Position; // Store the offset where the file info
+                                                             // structure begins
+                uint totalStructLength = fileReader.ReadUInt32(); // read the length of the whole struct
+                fileStream.Seek(0xc, SeekOrigin.Current); // seek to offset to base pathname
+                uint fileOffset = fileReader.ReadUInt32(); // read offset to base pathname
+                                                           // the offset is from the beginning of the file info struct (fileInfoStartsAt)
+                fileStream.Seek((fileInfoStartsAt + fileOffset), SeekOrigin.Begin); // Seek to beginning of
+                                                                                    // base pathname (target)
+                long pathLength = (totalStructLength + fileInfoStartsAt) - fileStream.Position - 2; // read
+                                                                                                    // the base pathname. I don't need the 2 terminating nulls.
+                char[] linkTarget = fileReader.ReadChars((int)pathLength); // should be unicode safe
+                var link = new string(linkTarget);
+
+                int begin = link.IndexOf("\0\0");
+                if (begin > -1)
+                {
+                    int end = link.IndexOf("\\\\", begin + 2) + 2;
+                    end = link.IndexOf('\0', end) + 1;
+
+                    string firstPart = link.Substring(0, begin);
+                    string secondPart = link[end..];
+
+                    return firstPart + secondPart;
+                }
+                return link;
+            }
+            catch
+            {
+                return "";
+            }
+        }
     }
 }
