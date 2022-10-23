@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -62,6 +63,14 @@ namespace GLEBuildTool
             //files = AllFiles.OrderBy(Path.GetFileName).ToArray();
             AllFiles.Sort();
             files = AllFiles.ToArray();
+
+            if (args.Any(a => a.Equals("-list")))
+            {
+                for (int i = 0; i < files.Length; i++)
+                {
+                    Console.WriteLine(files[i]);
+                }
+            }
 
             Console.WriteLine($"Loading Symbols for {Region}...");
             Dictionary<string, uint> Symbols = new();
@@ -375,6 +384,13 @@ namespace GLEBuildTool
                 {
                     //Special GLE command! Lets split and investigate...
 
+#if DEBUG
+                    if (Lines[i].Equals(".GLE DEBUG"))
+                    {
+                        //Debugger.Break();
+                    }
+#endif
+
                     if (Lines[i].Equals(".GLE PRINTADDRESS"))
                     {
                         Console.WriteLine($"GLE: CURRENT ADDRESS - 0x{CurrentAddress:X8} in file {Filepath} on line {i}");
@@ -459,6 +475,10 @@ namespace GLEBuildTool
                     }
                     else if (split[1].Equals("ENDADDRESS"))
                     {
+                        if (split.Length == 3 && split[2].Equals("x"))
+                        {
+
+                        }
                         if (AddressStack.Count == 0)
                             continue;
 
@@ -510,7 +530,10 @@ namespace GLEBuildTool
 
                         if (CurrentAddress > Result)
                         {
-                            ThrowException($"Code compiles beyond the allowed point! (0x{Result:X8})", Filepath, i);
+                            if (CurrentAddress - Result > 1000)
+                                ThrowWarning($"Misalignment, code may have gone past an Assertion! (0x{Result:X8}, 0x{(CurrentAddress - Result):X8})", Filepath, i);
+                            else
+                                ThrowException($"Code compiles beyond the allowed point! (0x{Result:X8}, 0x{(CurrentAddress - Result):X8})", Filepath, i);
                         }
                         else if (CurrentAddress == Result)
                         {
@@ -553,6 +576,11 @@ namespace GLEBuildTool
 
                 if (Lines[i].StartsWith("#"))
                     continue; //Skip Comments
+
+                if (Regex.IsMatch(Lines[i], @"^.*:$", RegexOptions.Singleline))
+                {
+                    //TODO: Either Strip comments form labels, or invalidate them!
+                }
 
                 if (Regex.IsMatch(Lines[i], @"^.*:$", RegexOptions.Singleline))
                 {
