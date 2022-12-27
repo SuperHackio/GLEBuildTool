@@ -5,7 +5,7 @@ The Build tool for the Galaxy Level Engine.
 
 - `Galaxy Level Engine` from the [Galaxy Level Engine Github](https://github.com/SuperHackio/GalaxyLevelEngine)
 - `powerpc-eabi-as.exe` from DevKitPro.
-- `.NET 7.0 Runtime` from [Microsoft](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (Look for the .NET Runtime 7.0+ downloads).
+- `.NET 7.0` from [Microsoft](https://dotnet.microsoft.com/en-us/download/dotnet/7.0).
 
 ## Usage
 
@@ -27,4 +27,4 @@ Once this structure is ready, open Command Prompt and run the following:
 
 `GLEBuildTool.exe <Region>`
 
-where <Region> can be `NTSC-U`, `PAL`, or `NTSC-J` (for North America, Europe, and Japan respectively)
+where `<Region>` can be `NTSC-U`, `PAL`, or `NTSC-J` (for North America, Europe, and Japan respectively)
