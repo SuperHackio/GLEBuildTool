@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31424.327
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GLEBuildTool", "GLEBuildTool\GLEBuildTool.csproj", "{73D1EC20-F513-4CB6-9E20-A3A07C9204BB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GLEBuildTool", "GLEBuildTool\GLEBuildTool.csproj", "{EBC7A37D-09E2-45AB-8058-B1FCF4EFD8BF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{73D1EC20-F513-4CB6-9E20-A3A07C9204BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{73D1EC20-F513-4CB6-9E20-A3A07C9204BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{73D1EC20-F513-4CB6-9E20-A3A07C9204BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{73D1EC20-F513-4CB6-9E20-A3A07C9204BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBC7A37D-09E2-45AB-8058-B1FCF4EFD8BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBC7A37D-09E2-45AB-8058-B1FCF4EFD8BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBC7A37D-09E2-45AB-8058-B1FCF4EFD8BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBC7A37D-09E2-45AB-8058-B1FCF4EFD8BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {D6B8736E-4677-438A-905A-17CB70E4CFD6}
+		SolutionGuid = {78BE25BD-DC01-4786-9F0B-AAE4A60AF13E}
 	EndGlobalSection
 EndGlobal
