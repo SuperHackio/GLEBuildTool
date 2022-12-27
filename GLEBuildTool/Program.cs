@@ -577,9 +577,11 @@ namespace GLEBuildTool
                 if (Lines[i].StartsWith("#"))
                     continue; //Skip Comments
 
-                if (Regex.IsMatch(Lines[i], @"^.*:$", RegexOptions.Singleline))
+                if (Regex.IsMatch(Lines[i], @"\..*:\s+#.*", RegexOptions.Singleline))
                 {
                     //TODO: Either Strip comments form labels, or invalidate them!
+                    int x = Lines[i].IndexOf(':')+1;
+                    Lines[i] = Lines[i][..x];
                 }
 
                 if (Regex.IsMatch(Lines[i], @"^.*:$", RegexOptions.Singleline))
@@ -655,9 +657,9 @@ namespace GLEBuildTool
 
         static void ExeCommand(string Command)
         {
-            System.Diagnostics.Process process = new();
-            System.Diagnostics.ProcessStartInfo startInfo = new();
-            startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+            Process process = new();
+            ProcessStartInfo startInfo = new();
+            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
             startInfo.FileName = "cmd.exe";
             startInfo.Arguments = $"/C {Command}";
             process.StartInfo = startInfo;
