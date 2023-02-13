@@ -139,7 +139,8 @@ namespace GLE
             ref List<string> Bindings,
             string Filepath, 
             string Region,
-            Dictionary<string, uint> Symbols)
+            Dictionary<string, uint> Symbols,
+            ref Dictionary<uint, string> DuplicateAddressTracker)
         {
             string[] Lines = File.ReadAllLines(Filepath);
             Stack<uint> AddressStack = new();
@@ -348,11 +349,19 @@ namespace GLE
                 }
 
                 if (CodeLines.ContainsKey(CurrentAddress))
-                    ThrowException($"Duplicate Address 0x{CurrentAddress:X8}", Filepath, i);
+                {
+                    //Track down the duplicate address!!
+
+                    string ExistingFile = DuplicateAddressTracker[CurrentAddress];
+                    string CurrentFile = new FileInfo(Filepath).Name;
+
+                    ThrowException($"Duplicate Address 0x{CurrentAddress:X8} (It's in {ExistingFile})", Filepath, i);
+                }
 
 
                 //Assign the current line the address, then increment it
                 CodeLines.Add(CurrentAddress, Lines[i]);
+                DuplicateAddressTracker.Add(CurrentAddress, new FileInfo(Filepath).Name + "Line " + i);
 
                 if (IsTrashing)
                     TrashAddresses.Add(CurrentAddress);

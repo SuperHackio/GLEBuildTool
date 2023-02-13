@@ -102,9 +102,10 @@ namespace GLEBuildTool
             Dictionary<string, string> Variables = new();
             List<uint> Trash = new();
             List<string> Bindings = new();
+            Dictionary<uint, string> DuplicateAddressTracker = new();
             for (int i = 0; i < AllFiles.Count; i++)
             {
-                int result = Utility.CollectLines(ref CodeLines, ref Markers, ref Variables, ref Trash, ref Bindings, AllFiles[i], Region, Symbols);
+                int result = Utility.CollectLines(ref CodeLines, ref Markers, ref Variables, ref Trash, ref Bindings, AllFiles[i], Region, Symbols, ref DuplicateAddressTracker);
                 if (result != 0)
                 {
                     //An error(?) occured
