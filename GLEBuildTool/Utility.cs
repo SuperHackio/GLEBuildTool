@@ -122,7 +122,8 @@ namespace GLE
         public static void GetSymbols(ref Dictionary<string, uint> Symbols, string SymbolsPath, string Region)
         {
             Console.WriteLine($"Loading Symbols for {Region}...");
-            string[] SymbolLines = File.ReadAllLines(Path.Combine(SymbolsPath, $"{Region}.txt"));
+            string pth = Path.Combine(SymbolsPath, $"{Region}.txt");
+            string[] SymbolLines = File.ReadAllLines(pth);
             for (int i = 0; i < SymbolLines.Length; i++)
             {
                 string[] sympart = SymbolLines[i].Split('=');
@@ -563,12 +564,43 @@ namespace GLE
 
                 Next(ref CurrentAddress);
 
+
+
+
+
+                //This function allows the use of variables inside variables!
+                //Does NOT work for Markers or Symbols!
+
+                string TryAddInlineVariables(KeyValuePair<string, string> CurrentVariable)
+                {
+                    string x = CurrentVariable.Value;
+                    string Result = "";
+                    foreach (var var in Variables)
+                    {
+                        if (x.Contains(var.Key) && !InUseVars.Contains(var.Key))
+                        {
+                            InUseVars.Add(var.Key);
+                            Result += TryAddInlineVariables(var);
+                        }
+                    }
+                    Result += $".set {CurrentVariable.Key}, {CurrentVariable.Value}" + Environment.NewLine;
+                    return Result;
+                }
+
+
+
+
+
+
+
+
                 foreach (var var in Variables)
                 {
                     if (fixedcode.Contains(var.Key) && !InUseVars.Contains(var.Key))
                     {
                         InUseVars.Add(var.Key);
-                        Current += $".set {var.Key}, {var.Value}" + Environment.NewLine;
+                        Current += TryAddInlineVariables(var);
+                        //Current += $".set {var.Key}, {var.Value}" + Environment.NewLine;
                     }
                 }
                 foreach (var var in Markers)
