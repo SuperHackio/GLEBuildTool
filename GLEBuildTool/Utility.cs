@@ -123,6 +123,12 @@ namespace GLE
         {
             Console.WriteLine($"Loading Symbols for {Region}...");
             string pth = Path.Combine(SymbolsPath, $"{Region}.txt");
+            if (!File.Exists(pth))
+            {
+                string lnk = pth + ".lnk";
+                if (File.Exists(lnk))
+                    pth = Program.GetShortcutTarget(lnk);
+            }
             string[] SymbolLines = File.ReadAllLines(pth);
             for (int i = 0; i < SymbolLines.Length; i++)
             {
