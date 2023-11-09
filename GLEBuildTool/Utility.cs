@@ -690,7 +690,8 @@ namespace GLE
 
             //All code aquired. Lets make a riivo memory patch
             string Mem = $"<memory offset=\"0x{Address.ToUpper()}\" value=\"{RiivoData}\" />";
-            MemoryPatches.Add(Mem);
+            if (!string.IsNullOrWhiteSpace(RiivoData))
+                MemoryPatches.Add(Mem);
             Dolphin.Add(IniData);
 
             return (MemoryPatches, Dolphin);
