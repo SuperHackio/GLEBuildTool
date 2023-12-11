@@ -24,7 +24,7 @@ namespace GLEBuildTool
         {
             try
             {
-                if (Path.GetExtension(file).ToLower() != ".lnk")
+                if (!Path.GetExtension(file).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new Exception("Supplied file must be a .LNK file");
                 }
@@ -90,19 +90,19 @@ namespace GLEBuildTool
 
             Thread.Sleep(500);
 
-            List<string> AllFiles = new();
+            List<string> AllFiles = [];
             Utility.GetAllFiles(ref AllFiles, SourcePath, args.Any(a => a.Equals("-list")));
 
-            Dictionary<string, uint> Symbols = new();
+            Dictionary<string, uint> Symbols = [];
             Utility.GetSymbols(ref Symbols, SymbolsPath, Region);
 
             Console.WriteLine("Reading Source Files...");
-            SortedDictionary<uint, string> CodeLines = new();
-            Dictionary<string, uint> Markers = new();
-            Dictionary<string, string> Variables = new();
-            List<uint> Trash = new();
-            List<string> Bindings = new();
-            Dictionary<uint, string> DuplicateAddressTracker = new();
+            SortedDictionary<uint, string> CodeLines = [];
+            Dictionary<string, uint> Markers = [];
+            Dictionary<string, string> Variables = [];
+            List<uint> Trash = [];
+            List<string> Bindings = [];
+            Dictionary<uint, string> DuplicateAddressTracker = [];
             for (int i = 0; i < AllFiles.Count; i++)
             {
                 int result = Utility.CollectLines(ref CodeLines, ref Markers, ref Variables, ref Trash, ref Bindings, AllFiles[i], Region, Symbols, ref DuplicateAddressTracker);
@@ -141,20 +141,20 @@ namespace GLEBuildTool
             //Dictionary sorted. Time to make files out of these!
 
 
-            List<string> PreparedFiles = new();
-            List<int> CodeCounts = new();
+            List<string> PreparedFiles = [];
+            List<int> CodeCounts = [];
             uint CurrentAddress = 0;
             Utility.PrepareAssembly(ref PreparedFiles, ref CodeCounts, ref CurrentAddress, CodeLines, Markers, Variables, Symbols);
 
             Console.WriteLine("Compiling...");
-            List<string> MemoryPatches = new();
-            List<string> Dolphin = new()
-            {
+            List<string> MemoryPatches = [];
+            List<string> Dolphin =
+            [
                 "[OnFrame]",
                 "$GalaxyLevelEngine"
-            };
+            ];
 
-            List<Task<(List<string> MemoryPatches, List<string> Dolphin)>> BuildTasks = new();
+            List<Task<(List<string> MemoryPatches, List<string> Dolphin)>> BuildTasks = [];
 
             //Create the folder to compile in
             string CompileFolder = Path.Combine(CompilePath, Region);
@@ -212,8 +212,8 @@ namespace GLEBuildTool
             Directory.CreateDirectory(DolphinOutputPath(Region));
 
             Console.WriteLine("Saving Generated Patches...");
-            File.WriteAllLines(Path.Combine(RiivoOutputPath(Region), $"GalaxyLevelEngine_{GLEVERSION}_{Region}.xml"), MemoryPatches.ToArray());
-            File.WriteAllLines(Path.Combine(DolphinOutputPath(Region), $"SB3{RegionShort.ToUpper()}01.ini"), Dolphin.ToArray());
+            File.WriteAllLines(Path.Combine(RiivoOutputPath(Region), $"GalaxyLevelEngine_{GLEVERSION}_{Region}.xml"), [.. MemoryPatches]);
+            File.WriteAllLines(Path.Combine(DolphinOutputPath(Region), $"SB3{RegionShort.ToUpper()}01.ini"), [.. Dolphin]);
 
             if (!Directory.Exists(ResourcesPath))
             {
