@@ -62,6 +62,10 @@ namespace GLE
             Console.WriteLine($"in {file}, line {line}.");
             Console.WriteLine("========================");
         }
+        public static void ThrowWarningASM(string message)
+        {
+            Console.WriteLine($"ASM WARNING: {message}");
+        }
         public static void ThrowException(string message, string file, int line) => throw new Exception($"Build Error: {message} | File: {file} | Line: {line}");
 
         public static void ExeCommand(string Command)
@@ -212,9 +216,9 @@ namespace GLE
                         if (split.Length <= 2)
                             ThrowException("Invalid .GLE ADDRESS Prompt (Missing address)", Filepath, i);
 
-                        if (Variables.ContainsKey(split[2]))
+                        if (Variables.TryGetValue(split[2], out string? valueAddress))
                         {
-                            split[2] = Variables[split[2]];
+                            split[2] = valueAddress;
                         }
 
                         if (Symbols.TryGetValue(split[2], out uint value))
@@ -260,9 +264,9 @@ namespace GLE
                     {
                         if (split.Length <= 2)
                             ThrowException("Invalid .GLE ASSERT Prompt", Filepath, i);
-                        if (Variables.ContainsKey(split[2]))
+                        if (Variables.TryGetValue(split[2], out string? valueAddress))
                         {
-                            split[2] = Variables[split[2]];
+                            split[2] = valueAddress;
                         }
                         if (Symbols.TryGetValue(split[2], out uint value))
                         {
@@ -463,9 +467,9 @@ namespace GLE
                 {
                     string[] splitter = fixedcode.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-                    if (Variables.ContainsKey(splitter[1]))
+                    if (Variables.TryGetValue(splitter[1], out string? valueBranch))
                     {
-                        splitter[1] = Variables[splitter[1]]; //replace variable name with variable value.
+                        splitter[1] = valueBranch; //replace variable name with variable value.
                     }
                     //Try parse a direct vlaue right
                     uint Offset = 0;
@@ -541,8 +545,8 @@ namespace GLE
                     //Special override for taking the integers of symbols and labels
 
                     string v = fixedcode[5..];
-                    if (Variables.ContainsKey(v))
-                        v = Variables[v];
+                    if (Variables.TryGetValue(v, out string? valueInteger32))
+                        v = valueInteger32;
 
                     if (Markers.TryGetValue(v, out uint value))
                     {
