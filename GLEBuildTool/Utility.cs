@@ -8,8 +8,8 @@ namespace GLEBuildTool
     {
         public const uint UNRESOLVED = 0xFFFFFFFF;
 
-        public static readonly string[] Branches = new string[]
-        {
+        public static readonly string[] Branches =
+        [
             "b ",
             "bl ",
             "ble ",
@@ -36,7 +36,7 @@ namespace GLEBuildTool
             "bdnz ",
             "bdnz- ",
             "bdnz+ ",
-        };
+        ];
 
         //Unfinished feature
         public const string GLE_H =
@@ -117,7 +117,7 @@ namespace GLE
             AllFiles.Sort();
             if (ShowList)
             {
-                files = AllFiles.ToArray();
+                files = [.. AllFiles];
                 for (int i = 0; i < files.Length; i++)
                     Console.WriteLine(files[i]);
             }
@@ -333,7 +333,7 @@ namespace GLE
                 }
 
 
-                if (string.IsNullOrWhiteSpace(Lines[i]) || Lines[i].StartsWith("#") ||!IsActive)
+                if (string.IsNullOrWhiteSpace(Lines[i]) || Lines[i].StartsWith('#') ||!IsActive)
                     continue; //Skip empty lines & Comments
 
 
@@ -443,7 +443,7 @@ namespace GLE
             Dictionary<string, uint> Symbols)
         {
             string? Current = null;
-            List<string> InUseVars = new();
+            List<string> InUseVars = [];
             uint StartAddress = 0;
             foreach (KeyValuePair<uint, string> item in CodeLines)
             {
@@ -652,8 +652,8 @@ namespace GLE
             List<int> CodeCounts,
             List<uint> Trash)
         {
-            List<string> MemoryPatches = new();
-            List<string> Dolphin = new();
+            List<string> MemoryPatches = [];
+            List<string> Dolphin = [];
 
             string Address = PreparedFiles[i].Substring(1, 8);
             uint CurrentAddress = uint.Parse(Address, System.Globalization.NumberStyles.HexNumber);
