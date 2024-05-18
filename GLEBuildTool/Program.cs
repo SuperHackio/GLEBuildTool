@@ -4,7 +4,7 @@ namespace GLEBuildTool
 {
     internal class Program
     {
-        const string GLEVERSION = "V3_0_0_0";
+        const string GLEVERSION = "V3_0_1_0";
         const string TITLE = "GLE Build Tool";
 
         public static string SourcePath => Path.Combine(WorkingPath, "Source");

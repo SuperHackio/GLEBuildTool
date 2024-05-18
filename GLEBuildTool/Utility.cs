@@ -41,7 +41,7 @@ namespace GLEBuildTool
         //Unfinished feature
         public const string GLE_H =
 @"//C Bindings for the Galaxy Level Engine.
-//Intended for use with Syati. https://github.com/SunakazeKun/Syati
+//Intended for use with Syati. https://github.com/SMGCommunity/Syati
 
 #ifndef __GLE_H
 #define __GLE_H
@@ -141,14 +141,14 @@ namespace GLE
             }
             Console.WriteLine($"Loaded {Symbols.Count} Symbols");
         }
-    
+
         public static int CollectLines(
             ref SortedDictionary<uint, string> CodeLines,
             ref Dictionary<string, uint> Markers,
             ref Dictionary<string, string> Variables,
             ref List<uint> TrashAddresses,
             ref List<string> Bindings,
-            string Filepath, 
+            string Filepath,
             string Region,
             Dictionary<string, uint> Symbols,
             ref Dictionary<uint, string> DuplicateAddressTracker)
@@ -328,12 +328,12 @@ namespace GLE
                         else
                             IsActive = split[2].Equals(p.Region) || split[2].Equals(p.RegionShort);
                     }
-                    
+
                     continue;
                 }
 
 
-                if (string.IsNullOrWhiteSpace(Lines[i]) || Lines[i].StartsWith('#') ||!IsActive)
+                if (string.IsNullOrWhiteSpace(Lines[i]) || Lines[i].StartsWith('#') || !IsActive)
                     continue; //Skip empty lines & Comments
 
 
@@ -403,6 +403,8 @@ namespace GLE
                     CurrentAddress += (uint)strcount;
                     continue;
                 }
+                else if (Lines[i].TrimStart().StartsWith(".double"))
+                    CurrentAddress += 0x08; //Doubles are 8 bytes not 4 :skull:
                 else
                     CurrentAddress += 0x04;
             }
@@ -431,8 +433,8 @@ namespace GLE
                 }
             }
         }
-    
-    
+
+
         public static void PrepareAssembly(
             ref List<string> PreparedFiles,
             ref List<int> CodeCounts,
@@ -572,7 +574,10 @@ namespace GLE
                     }
                 }
 
-                Next(ref CurrentAddress);
+                if (fixedcode.StartsWith(".double "))
+                    Next(ref CurrentAddress, 2);
+                else
+                    Next(ref CurrentAddress);
 
 
 
@@ -630,10 +635,10 @@ namespace GLE
                     }
                 }
 
-                void Next(ref uint CurrentAddress)
+                void Next(ref uint CurrentAddress, uint Multiplier = 1)
                 {
                     Current += fixedcode + Environment.NewLine;
-                    CurrentAddress += 0x04;
+                    CurrentAddress += 0x04 * Multiplier;
                 }
             }
             if (Current is null)
