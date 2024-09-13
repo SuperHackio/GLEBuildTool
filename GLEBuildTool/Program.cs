@@ -1,10 +1,11 @@
-﻿using System.Text;
+﻿using System.Runtime.ConstrainedExecution;
+using System.Text;
 
 namespace GLEBuildTool
 {
     internal class Program
     {
-        const string GLEVERSION = "V3_0_1_0";
+        public const string GLEVERSION = "V3_5_0_0";
         const string TITLE = "GLE Build Tool";
 
         public static string SourcePath => Path.Combine(WorkingPath, "Source");
@@ -17,6 +18,7 @@ namespace GLEBuildTool
         public static string WorkingPath => AppDomain.CurrentDomain.BaseDirectory;
         public static string RiivoOutputPath(string region) => OutputPath(region, "Riivolution");
         public static string DolphinOutputPath(string region) => OutputPath(region, "Dolphin");
+        public static string ExternalsOutputPath() => Path.Combine(WorkingPath, "Build", "Externals");
         public static string OutputPath(string region, string ver) => Path.Combine(WorkingPath, "Build", $"{region}_{ver}");
         public static string GLEFull(string region, string ver) => $"GalaxyLevelEngine_{ver}_{region}";
 
@@ -103,9 +105,10 @@ namespace GLEBuildTool
             List<uint> Trash = [];
             List<string> Bindings = [];
             Dictionary<uint, string> DuplicateAddressTracker = [];
+            List<ExternalUtility.GLESymbolDefinition> ExternalSymbols = [];
             for (int i = 0; i < AllFiles.Count; i++)
             {
-                int result = Utility.CollectLines(ref CodeLines, ref Markers, ref Variables, ref Trash, ref Bindings, AllFiles[i], Region, Symbols, ref DuplicateAddressTracker);
+                int result = Utility.CollectLines(ref CodeLines, ref Markers, ref Variables, ref Trash, ref Bindings, AllFiles[i], Region, Symbols, ref DuplicateAddressTracker, ref ExternalSymbols);
                 if (result != 0)
                 {
                     //An error(?) occured
@@ -227,6 +230,8 @@ namespace GLEBuildTool
             Utility.DirectoryCopy(Path.Combine(ResourcesPath, "Riivolution"), Path.Combine(DolphinOutputPath(Region), GLEFull(Region, GLEVERSION), "files"), true);
 
         NoResJump:
+            ExternalUtility.GenerateExternalsData(RegionShort, ExternalSymbols);
+
             Console.WriteLine("Build Finished! Check the Build folder!");
             Thread.Sleep(2000);
         }

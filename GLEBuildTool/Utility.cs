@@ -38,23 +38,6 @@ namespace GLEBuildTool
             "bdnz+ ",
         ];
 
-        //Unfinished feature
-        public const string GLE_H =
-@"//C Bindings for the Galaxy Level Engine.
-//Intended for use with Syati. https://github.com/SMGCommunity/Syati
-
-#ifndef __GLE_H
-#define __GLE_H
-
-#include ""syati.h""
-
-namespace GLE
-{
-{0}
-}
-
-#endif /* __GLE_H */";
-
         public static void ThrowWarning(string message, string file, int line)
         {
             Console.WriteLine("========================");
@@ -151,12 +134,14 @@ namespace GLE
             string Filepath,
             string Region,
             Dictionary<string, uint> Symbols,
-            ref Dictionary<uint, string> DuplicateAddressTracker)
+            ref Dictionary<uint, string> DuplicateAddressTracker,
+            ref List<ExternalUtility.GLESymbolDefinition> ExternalSymbols)
         {
             string[] Lines = File.ReadAllLines(Filepath);
             Stack<uint> AddressStack = new();
             uint CurrentAddress = 0;
             bool IsActive = true, IsTrashing = false;
+            ExternalUtility.GLESymbolDefinition? CurrentExternalSymbol = null;
 
             for (int i = 0; i < Lines.Length; i++)
             {
@@ -189,6 +174,91 @@ namespace GLE
                         continue;
                     }
 
+                    if (split[1].Equals("SYMBOL"))
+                    {
+                        if (split.Length < 3)
+                            ThrowException($"Incomplete Symbol definition", Filepath, i);
+
+                        if (split[2].Equals("START"))
+                        {
+                            if (CurrentExternalSymbol is not null)
+                            {
+                                ThrowWarning("GLE SYMBOL START Failed because a symbol is already active", Filepath, i);
+                                continue;
+                            }
+
+                            CurrentExternalSymbol = new(CurrentAddress);
+                        }
+
+                        if (CurrentExternalSymbol is null)
+                        {
+                            ThrowWarning($"GLE SYMBOL {split[2]} Failed because no symbol is currently active", Filepath, i);
+                            continue;
+                        }
+
+                        if (split[2].Equals("END"))
+                        {
+                            ExternalSymbols.Add(CurrentExternalSymbol);
+                            CurrentExternalSymbol = null;
+                            continue;
+                        }
+
+                        if (split[2].Equals("NAME")) //.GLE SYMBOL NAME MangledSymbolHere
+                        {
+                            CurrentExternalSymbol.Name = split[3]; //Names cannot have spaces
+                            continue;
+                        }
+
+                        if (split[2].Equals("DESC")) //.GLE SYMBOL DESC #DescriptionTextGoesHere
+                        {
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            CurrentExternalSymbol.Description.Add(str);
+                            continue;
+                        }
+
+                        if (split[2].Equals("PARA")) //.GLE SYMBOL PARA <id> <ParamName> #ParamDescription
+                        {
+                            if (split.Length < 5)
+                            {
+                                ThrowWarning($".GLE SYMBOL PARA Failed due to lack of data. ({split.Length}/5 mandatory)", Filepath, i);
+                                continue;
+                            }
+                            if (!int.TryParse(split[3], out int paramid))
+                            {
+                                ThrowWarning(".GLE SYMBOL PARA Failed to interpret the Parameter ID", Filepath, i);
+                                continue;
+                            }
+                            string paramName = split[4];
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            if (!CurrentExternalSymbol.ParameterDescriptions.ContainsKey(paramid))
+                                CurrentExternalSymbol.ParameterDescriptions.Add(paramid, (paramName, []));
+                            CurrentExternalSymbol.ParameterDescriptions[paramid].Description.Add(str);
+                            continue;
+                        }
+
+                        if (split[2].Equals("RETN"))
+                        {
+                            if (split.Length < 4)
+                            {
+                                ThrowWarning($".GLE SYMBOL RETN Failed due to lack of data. ({split.Length}/4 mandatory)", Filepath, i);
+                                continue;
+                            }
+
+                            CurrentExternalSymbol.ReturnType = split[3];
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            CurrentExternalSymbol.ReturnInfo.Add(str);
+                        }
+
+                        if (split[2].Equals("CRSH"))
+                        {
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            CurrentExternalSymbol.CrashInfo.Add(str);
+                            continue;
+                        }
+                    }
+
+
+
                     //New Build Tool Feature: Bindings and Hooks
                     //
                     //Bindings are C Functions that a Syati program can call to access GLE Functions
@@ -207,6 +277,12 @@ namespace GLE
                         throw new NotImplementedException(); //TODO: Make a hook generator!
                         //continue;
                     }
+
+
+
+
+
+
 
                     if (!IsActive)
                         goto CheckRegion;
