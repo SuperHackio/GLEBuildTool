@@ -135,13 +135,15 @@ namespace GLEBuildTool
             string Region,
             Dictionary<string, uint> Symbols,
             ref Dictionary<uint, string> DuplicateAddressTracker,
-            ref List<ExternalUtility.GLESymbolDefinition> ExternalSymbols)
+            ref List<ExternalUtility.GLESymbolDefinition> ExternalSymbols,
+            ref List<ExternalUtility.GLEHookDefinition> ExternalHooks)
         {
             string[] Lines = File.ReadAllLines(Filepath);
             Stack<uint> AddressStack = new();
             uint CurrentAddress = 0;
             bool IsActive = true, IsTrashing = false;
             ExternalUtility.GLESymbolDefinition? CurrentExternalSymbol = null;
+            ExternalUtility.GLEHookDefinition? CurrentExternalHook = null;
 
             for (int i = 0; i < Lines.Length; i++)
             {
@@ -257,28 +259,91 @@ namespace GLEBuildTool
                         }
                     }
 
-
-
-                    //New Build Tool Feature: Bindings and Hooks
-                    //
-                    //Bindings are C Functions that a Syati program can call to access GLE Functions
-                    //
-                    //Hooks are Kamek instructions that can extend certain GLE Functions with Syati code
-                    if (split[1].Equals("BINDING") && split.Length > 2)
+                    if (split[1].Equals("HOOK"))
                     {
-                        Console.WriteLine($"GLE: BINDING CREATED FOR \"{Lines[i][18..]}\"");
-                        throw new NotImplementedException(); //TODO: Make a binding generator!
-                        //continue;
+                        if (split.Length < 3)
+                            ThrowException($"Incomplete Hook definition", Filepath, i);
+
+                        if (split[2].Equals("START"))
+                        {
+                            if (CurrentExternalHook is not null)
+                            {
+                                ThrowWarning("GLE HOOK START Failed because a HOOK is already active", Filepath, i);
+                                continue;
+                            }
+
+                            CurrentExternalHook = new(CurrentAddress);
+                        }
+
+                        if (CurrentExternalHook is null)
+                        {
+                            ThrowWarning($"GLE HOOK {split[2]} Failed because no HOOK is currently active", Filepath, i);
+                            continue;
+                        }
+
+                        if (split[2].Equals("END"))
+                        {
+                            ExternalHooks.Add(CurrentExternalHook);
+                            CurrentExternalHook = null;
+                            continue;
+                        }
+
+                        if (split[2].Equals("NAME")) //.GLE HOOK NAME MangledSymbolHere
+                        {
+                            CurrentExternalHook.Name = split[3]; //Names cannot have spaces
+                            continue;
+                        }
+                        if (split[2].Equals("TYPE")) //.GLE HOOK TYPE <Fixed type name>
+                        {
+                            CurrentExternalHook.HookType = split[3]; //Names cannot have spaces
+                            continue;
+                        }
+                        if (split[2].Equals("KAMK")) //.GLE HOOK KAMK <kamek hook type> Only kmCall and knBranch are supported
+                        {
+                            CurrentExternalHook.KamekType = split[3];
+                            continue;
+                        }
+
+                        if (split[2].Equals("DESC")) //.GLE HOOK DESC #DescriptionTextGoesHere
+                        {
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            CurrentExternalHook.Description.Add(str);
+                            continue;
+                        }
+
+                        if (split[2].Equals("PARA")) //.GLE HOOK PARA <id> <ParamName> #ParamDescription
+                        {
+                            if (split.Length < 5)
+                            {
+                                ThrowWarning($".GLE HOOK PARA Failed due to lack of data. ({split.Length}/5 mandatory)", Filepath, i);
+                                continue;
+                            }
+                            if (!int.TryParse(split[3], out int paramid))
+                            {
+                                ThrowWarning(".GLE HOOK PARA Failed to interpret the Parameter ID", Filepath, i);
+                                continue;
+                            }
+                            string paramName = split[4];
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            if (!CurrentExternalHook.ParameterDescriptions.ContainsKey(paramid))
+                                CurrentExternalHook.ParameterDescriptions.Add(paramid, (paramName, []));
+                            CurrentExternalHook.ParameterDescriptions[paramid].Description.Add(str);
+                            continue;
+                        }
+
+                        if (split[2].Equals("RETN"))
+                        {
+                            if (split.Length < 4)
+                            {
+                                ThrowWarning($".GLE HOOK RETN Failed due to lack of data. ({split.Length}/4 mandatory)", Filepath, i);
+                                continue;
+                            }
+
+                            CurrentExternalHook.ReturnType = split[3];
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            CurrentExternalHook.ReturnInfo.Add(str);
+                        }
                     }
-
-                    if (split[1].Equals("HOOK") && split.Length > 2)
-                    {
-                        Console.WriteLine($"GLE: HOOK CREATED FOR \"{Lines[i][18..]}\"");
-                        throw new NotImplementedException(); //TODO: Make a hook generator!
-                        //continue;
-                    }
-
-
 
 
 
