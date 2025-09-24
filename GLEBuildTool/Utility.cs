@@ -283,7 +283,24 @@ namespace GLEBuildTool
 
                         if (split[2].Equals("END"))
                         {
-                            ExternalHooks.Add(CurrentExternalHook);
+                            int IsDuplicate = -1;
+                            for (int a = 0; a < ExternalHooks.Count; a++)
+                            {
+                                if (ExternalHooks[a].Name?.Equals(CurrentExternalHook.Name) ?? false)
+                                {
+                                    IsDuplicate = a;
+                                    break;
+                                }
+                            }
+
+                            if (IsDuplicate >= 0)
+                            {
+                                uint v = CurrentExternalHook.Address[0];
+                                if (!ExternalHooks[IsDuplicate].Address.Contains(v))
+                                    ExternalHooks[IsDuplicate].Address.Add(v); // There can only be one...
+                            }
+                            else
+                                ExternalHooks.Add(CurrentExternalHook);
                             CurrentExternalHook = null;
                             continue;
                         }
@@ -824,7 +841,7 @@ namespace GLEBuildTool
             {
                 byte[] read = new byte[4];
                 FS.Read(read, 0, 4);
-                read = read.Reverse().ToArray();
+                read = [.. read.Reverse()];
                 string v = BitConverter.ToUInt32(read).ToString("X8");
                 if (!Trash.Contains(CurrentAddress))
                 {

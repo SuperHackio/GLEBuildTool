@@ -129,7 +129,7 @@ public static class ExternalUtility
         """;
 
     public const string GLE_SOURCE_HOOK_SYMBOL = "extern const u8 {0};";
-    public const string GLE_SOURCE_HOOK_EXTERN_NAME = "__hk__{0}";
+    public const string GLE_SOURCE_HOOK_EXTERN_NAME = "__hk__{0}_{1}";
     public const string GLE_SOURCE_HOOK_TEMPLATE =
         /*lang=cpp*/
         """
@@ -144,11 +144,17 @@ public static class ExternalUtility
                 }
                 <#FUNCRETURNCONTENT>
             }
-            <#KAMEKHOOKTYPE>(&<#EXTERNNAME>, <#FUNCNAME>);
+            <KAMEKDATA>
         }
 
         // ----------------------------------------------------------------------------------------------------------------
 
+        """;
+
+    public const string GLE_SOURCE_HOOK_KAMEK =
+        /*lang=cpp*/
+        """
+            <#KAMEKHOOKTYPE>(&<#EXTERNNAME>, <#FUNCNAME>);
         """;
 
     public const string SYMBOL_FORMAT = "{0}=0x{1}";
@@ -171,7 +177,7 @@ public static class ExternalUtility
     public class GLEHookDefinition(uint addr)
     {
         public string? Name;
-        public readonly uint Address = addr;
+        public List<uint> Address = [addr];
         public List<string> Description = [];
         public Dictionary<int, (string Name, List<string> Description)> ParameterDescriptions = [];
         public string? ReturnType;
@@ -443,22 +449,32 @@ public static class ExternalUtility
                 else
                     ModuleInfoBuilder.AppendLine();
 
-                string HookSymbolName = string.Format(GLE_SOURCE_HOOK_EXTERN_NAME, HookName);
-                ExternalSymbolList.Add(string.Format(SYMBOL_FORMAT, HookSymbolName, CurrentHook.Address.ToString("X8")));
+                string EXTERN_DATA = "";
+                string KAMEK_DATA = "";
+                for (int a = 0; a < CurrentHook.Address.Count; a++)
+                {
+                    string HookSymbolName = string.Format(GLE_SOURCE_HOOK_EXTERN_NAME, HookName, a);
+                    ExternalSymbolList.Add(string.Format(SYMBOL_FORMAT, HookSymbolName, CurrentHook.Address[a].ToString("X8")));
+
+                    EXTERN_DATA += string.Format(GLE_SOURCE_HOOK_SYMBOL, HookSymbolName) + Environment.NewLine;
+                    KAMEK_DATA = GLE_SOURCE_HOOK_KAMEK
+                        .Replace("<#KAMEKHOOKTYPE>", CurrentHook.KamekType)
+                        .Replace("<#EXTERNNAME>", HookSymbolName)
+                        .Replace("<#FUNCNAME>", HookName);
+                }
 
                 string CurrentHookCode = GLE_SOURCE_HOOK_TEMPLATE
                     .Replace("<#FUNCSTARTCONTENT>", CurrentHook.GetFuncStartContents())
                     .Replace("<#FUNCLOOPCONTENT>", CurrentHook.GetFuncLoopContents())
                     .Replace("<#FUNCRETURNCONTENT>", CurrentHook.GetFuncReturnContents())
-                    .Replace("<#EXTERN>", string.Format(GLE_SOURCE_HOOK_SYMBOL, HookSymbolName))
+                    .Replace("<#EXTERN>", EXTERN_DATA)
                     .Replace("<#RETURN>", CurrentHook.ReturnType ?? "void")
                     .Replace("<#FUNCNAME>", HookName)
                     .Replace("<#FUNCPARAMDEFINE>", CreateFunctionParamDefine())
                     .Replace("<#FUNCPARAM>", CreateFunctionParam())
                     .Replace("<#HOOKLIST>", $"cModule{HookName}Table")
                     .Replace("<#HOOKLISTCOUNT>", $"cModule{HookName}TableCount")
-                    .Replace("<#KAMEKHOOKTYPE>", CurrentHook.KamekType)
-                    .Replace("<#EXTERNNAME>", HookSymbolName);
+                    .Replace("<KAMEKDATA>", KAMEK_DATA);
                 SourceBuilder.AppendLine(CurrentHookCode);
             }
 
@@ -470,7 +486,7 @@ public static class ExternalUtility
                 {
                     string cur = ParamTypes[x];
                     cur += " ";
-                    cur += CurrentHook.ParameterDescriptions[0].Name;
+                    cur += CurrentHook.ParameterDescriptions[x].Name;
                     if (x < ParamTypes.Length-1)
                         cur += ",";
                     result += cur;
