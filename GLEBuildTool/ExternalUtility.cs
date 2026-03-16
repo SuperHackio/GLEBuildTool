@@ -35,6 +35,7 @@ public static class ExternalUtility
           "Author": "Super Hackio",
           "Description": "Syati Bindings for Galaxy Level Engine functions.",
           "APIId": "GalaxyLevelEngine_API",
+          "SupportedGames": [ "SB4" ],
           "CompilerFlags": [
             "-DGALAXY_LEVEL_ENGINE"
           ],
@@ -159,6 +160,21 @@ public static class ExternalUtility
 
     public const string SYMBOL_FORMAT = "{0}=0x{1}";
 
+    public const string STRUCT_FORMAT =
+        /*lang=cpp*/
+        """
+            struct {0} {{
+        {1}
+            }};
+        """;
+
+    public const string FunctionDocHeader =
+        """
+            /**
+        {0}
+             **/
+
+        """;
 
 
     public class GLESymbolDefinition(uint addr)
@@ -242,8 +258,15 @@ public static class ExternalUtility
         };
     }
 
+    public class GLEStructDefinition
+    {
+        public string? Name;
+        public List<string> Description = [];
+        public Dictionary<int, (string Name, string visibility, string type, List<string> Description)> MemberDescriptions = [];
+    }
 
-    public static void GenerateExternalsData(string RegionShort, List<GLESymbolDefinition> Externals, List<GLEHookDefinition> Hooks)
+
+    public static void GenerateExternalsData(string RegionShort, List<GLESymbolDefinition> Externals, List<GLEHookDefinition> Hooks, List<GLEStructDefinition> Structs)
     {
         if (Externals.Count == 0)
             return; //No externals to generate
@@ -255,10 +278,10 @@ public static class ExternalUtility
         if (!Directory.Exists(ExternalsFolder))
             Directory.CreateDirectory(ExternalsFolder);
 
-        GenerateSyatiModule(ExternalsFolder, RegionShort, Externals, Hooks);
+        GenerateSyatiModule(ExternalsFolder, RegionShort, Externals, Hooks, Structs);
     }
 
-    private static async void GenerateSyatiModule(string ExternalsFolder, string RegionShort, List<GLESymbolDefinition> Externals, List<GLEHookDefinition> Hooks)
+    private static async void GenerateSyatiModule(string ExternalsFolder, string RegionShort, List<GLESymbolDefinition> Externals, List<GLEHookDefinition> Hooks, List<GLEStructDefinition> Structs)
     {
         // Create a folder for a Syati Module if it doesn't already exist
         string ModuleFolder = Path.Combine(ExternalsFolder, "GLE_API");
@@ -292,7 +315,7 @@ public static class ExternalUtility
             """;
 
         // Time to generate the header. First, we have to deal with separating each External into a namespace
-        Dictionary<string, List<GLESymbolDefinition>> Namespaces = [];
+        Dictionary<string, (List<GLESymbolDefinition> sym, List<GLEStructDefinition> stc)> Namespaces = [];
         for (int i = 0; i < Externals.Count; i++)
         {
             GLESymbolDefinition def = Externals[i];
@@ -312,8 +335,30 @@ public static class ExternalUtility
             }
 
             if (!Namespaces.ContainsKey(NamespaceKey))
-                Namespaces.Add(NamespaceKey, []);
-            Namespaces[NamespaceKey].Add(def);
+                Namespaces.Add(NamespaceKey, ([], []));
+            Namespaces[NamespaceKey].sym.Add(def);
+        }
+        for (int i = 0; i < Structs.Count; i++)
+        {
+            GLEStructDefinition def = Structs[i];
+
+            string? DemangledName = def.Name;
+            if (DemangledName is null)
+            {
+                Debugger.Break();
+                continue;
+            }
+            string[] NamespaceSplit = DemangledName.Split("::");
+
+            string NamespaceKey = "";
+            for (int j = 0; j < NamespaceSplit.Length - 1; j++)
+            {
+                NamespaceKey += NamespaceSplit[j] + "::";
+            }
+
+            if (!Namespaces.ContainsKey(NamespaceKey))
+                Namespaces.Add(NamespaceKey, ([], []));
+            Namespaces[NamespaceKey].stc.Add(def);
         }
         ;
         StringBuilder sb = new();
@@ -326,10 +371,25 @@ public static class ExternalUtility
             if (CurrentNamespace.Equals("GLE::"))
                 sb.AppendLine("// Galaxy Level Engine");
             sb.Append($"namespace ").Append(CurrentNamespace[..^2]).Append(" {\n");
-            List<GLESymbolDefinition> Definitions = Namespaces[CurrentNamespace];
-            for (int j = 0; j < Definitions.Count; j++)
+
+            List<GLESymbolDefinition> SymbolDefines = Namespaces[CurrentNamespace].sym;
+            List<GLEStructDefinition> StructDefines = Namespaces[CurrentNamespace].stc;
+            // structs first, forward declare
+            for (int j = 0; j < StructDefines.Count; j++)
             {
-                GLESymbolDefinition def = Definitions[j];
+                GLEStructDefinition def = StructDefines[j];
+                if (def.Name is null)
+                    continue; // what
+                sb.AppendLine($"    struct {def.Name[CurrentNamespace.Length..]};");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("//-----------------------------");
+            sb.AppendLine();
+
+            for (int j = 0; j < SymbolDefines.Count; j++)
+            {
+                GLESymbolDefinition def = SymbolDefines[j];
                 string? Demangled = def.DemangledName;
                 if (Demangled is null)
                     continue; // Failed to demangle. Need an actual warning later...
@@ -339,13 +399,7 @@ public static class ExternalUtility
                 string DemangleNameOnly = DemangleNoNamespace[..^(DemangleSignatureOnly.Length+2)];
                 string[] Parameters = DemangleSignatureOnly.Split(',', StringSplitOptions.TrimEntries);
 
-                string FunctionDocHeader =
-                """
-                    /**
-                {0}
-                      **/
 
-                """;
                 StringBuilder FunctionDoc = new();
                 for (int l = 0; l < def.Description.Count; l++)
                     FunctionDoc.Append(@"      * \brief ").AppendLine(def.Description[l]);
@@ -396,6 +450,37 @@ public static class ExternalUtility
                 sb.AppendFormat(FunctionDocHeader, functionHeaderFinal);
                 sb.AppendFormat(func, ParamBuilder.ToString());
             }
+
+            sb.AppendLine();
+            sb.AppendLine("//-----------------------------");
+            sb.AppendLine();
+
+            for (int j = 0; j < StructDefines.Count; j++)
+            {
+                GLEStructDefinition def = StructDefines[j];
+                if (def.Name is null)
+                    continue; // what
+
+                StringBuilder ParamBuilder = new();
+                string PreviousVisible = "";
+                for (int k = 0; k < def.MemberDescriptions.Count; k++)
+                {
+                    if (!def.MemberDescriptions.TryGetValue(k, out (string Name, string visibility, string type, List<string> Description) result))
+                        continue;
+
+                    if (!result.visibility.Equals(PreviousVisible))
+                    {
+                        // Change visibilities
+                        PreviousVisible = result.visibility;
+                        ParamBuilder.AppendLine("    " + result.visibility + ':');
+                    }
+                    ParamBuilder.AppendLine("        " + result.type + " " +result.Name + ';');
+                }
+
+                sb.AppendFormat(STRUCT_FORMAT, def.Name[CurrentNamespace.Length..], ParamBuilder.ToString());
+                sb.AppendLine();
+            }
+
             sb.Append("}\n\n");
         }
         string HeaderData = sb.ToString();

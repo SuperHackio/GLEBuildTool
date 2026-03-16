@@ -136,7 +136,8 @@ namespace GLEBuildTool
             Dictionary<string, uint> Symbols,
             ref Dictionary<uint, string> DuplicateAddressTracker,
             ref List<ExternalUtility.GLESymbolDefinition> ExternalSymbols,
-            ref List<ExternalUtility.GLEHookDefinition> ExternalHooks)
+            ref List<ExternalUtility.GLEHookDefinition> ExternalHooks,
+            ref List<ExternalUtility.GLEStructDefinition> ExternalStructs)
         {
             string[] Lines = File.ReadAllLines(Filepath);
             Stack<uint> AddressStack = new();
@@ -144,6 +145,7 @@ namespace GLEBuildTool
             bool IsActive = true, IsTrashing = false;
             ExternalUtility.GLESymbolDefinition? CurrentExternalSymbol = null;
             ExternalUtility.GLEHookDefinition? CurrentExternalHook = null;
+            ExternalUtility.GLEStructDefinition? CurrentExternalStruct = null;
 
             for (int i = 0; i < Lines.Length; i++)
             {
@@ -320,7 +322,6 @@ namespace GLEBuildTool
                             CurrentExternalHook.KamekType = split[3];
                             continue;
                         }
-
                         if (split[2].Equals("DESC")) //.GLE HOOK DESC #DescriptionTextGoesHere
                         {
                             string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
@@ -362,6 +363,75 @@ namespace GLEBuildTool
                         }
                     }
 
+                    if (split[1].Equals("STRUCT"))
+                    {
+                        if (split.Length < 3)
+                            ThrowException($"Incomplete Struct definition", Filepath, i);
+
+                        if (split[2].Equals("START"))
+                        {
+                            if (CurrentExternalStruct is not null)
+                            {
+                                ThrowWarning("GLE STRUCT START Failed because a STRUCT is already active", Filepath, i);
+                                continue;
+                            }
+
+                            CurrentExternalStruct = new();
+                        }
+
+                        if (CurrentExternalStruct is null)
+                        {
+                            ThrowWarning($"GLE STRUCT {split[2]} Failed because no STRUCT is currently active", Filepath, i);
+                            continue;
+                        }
+
+                        if (split[2].Equals("END"))
+                        {
+                            for (int a = 0; a < ExternalStructs.Count; a++)
+                            {
+                                if (ExternalStructs[a].Name?.Equals(CurrentExternalStruct.Name) ?? false)
+                                {
+                                    ThrowException($"Duplicate Struct definition {ExternalStructs[a].Name}", Filepath, i);
+                                    break;
+                                }
+                            }
+                            ExternalStructs.Add(CurrentExternalStruct);
+                            CurrentExternalStruct = null;
+                            continue;
+                        }
+
+
+                        if (split[2].Equals("NAME")) //.GLE HOOK NAME MangledSymbolHere
+                        {
+                            CurrentExternalStruct.Name = split[3]; //Names cannot have spaces
+                            continue;
+                        }
+                        if (split[2].Equals("DESC")) //.GLE HOOK DESC #DescriptionTextGoesHere
+                        {
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            CurrentExternalStruct.Description.Add(str);
+                            continue;
+                        }
+                        if (split[2].Equals("MEMB")) //.GLE HOOK MEMB <id> <Visibility(PUBLIC/PRIVATE, etc.)> <Type(int, const char*, etc.)> <Name> #Description
+                        {
+                            if (split.Length < 7)
+                            {
+                                ThrowWarning($".GLE HOOK PARA Failed due to lack of data. ({split.Length}/7 mandatory)", Filepath, i);
+                                continue;
+                            }
+                            if (!int.TryParse(split[3], out int paramid))
+                            {
+                                ThrowWarning(".GLE HOOK PARA Failed to interpret the Parameter ID", Filepath, i);
+                                continue;
+                            }
+                            string paramName = split[6];
+                            string str = Lines[i][(Lines[i].IndexOf('#') + 1)..];
+                            if (!CurrentExternalStruct.MemberDescriptions.ContainsKey(paramid))
+                                CurrentExternalStruct.MemberDescriptions.Add(paramid, (paramName, split[4], split[5].Replace('$',' '), []));
+                            CurrentExternalStruct.MemberDescriptions[paramid].Description.Add(str);
+                            continue;
+                        }
+                    }
 
 
 

@@ -106,9 +106,22 @@ namespace GLEBuildTool
             Dictionary<uint, string> DuplicateAddressTracker = [];
             List<ExternalUtility.GLESymbolDefinition> ExternalSymbols = [];
             List<ExternalUtility.GLEHookDefinition> ExternalHooks = [];
+            List<ExternalUtility.GLEStructDefinition> ExternalStructs = [];
             for (int i = 0; i < AllFiles.Count; i++)
             {
-                int result = Utility.CollectLines(ref CodeLines, ref Markers, ref Variables, ref Trash, ref Bindings, AllFiles[i], Region, Symbols, ref DuplicateAddressTracker, ref ExternalSymbols, ref ExternalHooks);
+                int result = Utility.CollectLines(
+                    ref CodeLines, 
+                    ref Markers, 
+                    ref Variables, 
+                    ref Trash, 
+                    ref Bindings, 
+                    AllFiles[i], 
+                    Region, 
+                    Symbols, 
+                    ref DuplicateAddressTracker, 
+                    ref ExternalSymbols, 
+                    ref ExternalHooks, 
+                    ref ExternalStructs);
                 if (result != 0)
                 {
                     //An error(?) occured
@@ -230,7 +243,7 @@ namespace GLEBuildTool
             Utility.DirectoryCopy(Path.Combine(ResourcesPath, "Riivolution"), Path.Combine(DolphinOutputPath(Region), GLEFull(Region, GLEVERSION), "files"), true);
 
         NoResJump:
-            ExternalUtility.GenerateExternalsData(RegionShort, ExternalSymbols, ExternalHooks);
+            ExternalUtility.GenerateExternalsData(RegionShort, ExternalSymbols, ExternalHooks, ExternalStructs);
 
             Console.WriteLine("Build Finished! Check the Build folder!");
             Thread.Sleep(2000);
